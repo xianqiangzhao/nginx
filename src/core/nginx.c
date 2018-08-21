@@ -202,7 +202,7 @@ main(int argc, char *const *argv)
     ngx_core_conf_t  *ccf;
 
     ngx_debug_init();
-
+    //0~135 错误号的 msg  放到 ngx_sys_errlist  中
     if (ngx_strerror_init() != NGX_OK) {
         return 1;
     }
@@ -210,26 +210,26 @@ main(int argc, char *const *argv)
     if (ngx_get_options(argc, argv) != NGX_OK) {
         return 1;
     }
-
+    //显示版本
     if (ngx_show_version) {
         ngx_show_version_info();
 
-        if (!ngx_test_config) {
+        if (!ngx_test_config) {//测试配置文件
             return 0;
         }
     }
 
     /* TODO */ ngx_max_sockets = -1;
-
+    //事件初始化
     ngx_time_init();
-
+    //正则初始化
 #if (NGX_PCRE)
     ngx_regex_init();
 #endif
-
+    //进程ID和夫进程ID取得
     ngx_pid = ngx_getpid();
     ngx_parent = ngx_getppid();
-
+    //log 初期化
     log = ngx_log_init(ngx_prefix);
     if (log == NULL) {
         return 1;
@@ -237,6 +237,7 @@ main(int argc, char *const *argv)
 
     /* STUB */
 #if (NGX_OPENSSL)
+    //ssl 初始化
     ngx_ssl_init(log);
 #endif
 
@@ -248,20 +249,20 @@ main(int argc, char *const *argv)
     ngx_memzero(&init_cycle, sizeof(ngx_cycle_t));
     init_cycle.log = log;
     ngx_cycle = &init_cycle;
-
+    //pool 初期化
     init_cycle.pool = ngx_create_pool(1024, log);
     if (init_cycle.pool == NULL) {
         return 1;
     }
-
+    //参数保存
     if (ngx_save_argv(&init_cycle, argc, argv) != NGX_OK) {
         return 1;
     }
-
+    //process 选项设定
     if (ngx_process_options(&init_cycle) != NGX_OK) {
         return 1;
     }
-
+    //系统级别的设定比如cup cache line size ，最大文件描述符等等。
     if (ngx_os_init(log) != NGX_OK) {
         return 1;
     }
@@ -385,13 +386,13 @@ main(int argc, char *const *argv)
     return 0;
 }
 
-
+//显示版本
 static void
 ngx_show_version_info(void)
 {
     ngx_write_stderr("nginx version: " NGINX_VER_BUILD NGX_LINEFEED);
 
-    if (ngx_show_help) {
+    if (ngx_show_help) {//显示帮助
         ngx_write_stderr(
             "Usage: nginx [-?hvVtTq] [-s signal] [-c filename] "
                          "[-p prefix] [-g directives]" NGX_LINEFEED
@@ -738,6 +739,7 @@ ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
 }
 
 
+// 取得启动参数
 static ngx_int_t
 ngx_get_options(int argc, char *const *argv)
 {
@@ -758,21 +760,21 @@ ngx_get_options(int argc, char *const *argv)
             switch (*p++) {
 
             case '?':
-            case 'h':
+            case 'h'://显示版本
                 ngx_show_version = 1;
                 ngx_show_help = 1;
                 break;
 
-            case 'v':
+            case 'v'://显示版本
                 ngx_show_version = 1;
                 break;
 
-            case 'V':
+            case 'V'://显示版本&显示配置信息
                 ngx_show_version = 1;
                 ngx_show_configure = 1;
                 break;
 
-            case 't':
+            case 't'://测试配置文件
                 ngx_test_config = 1;
                 break;
 
@@ -799,7 +801,7 @@ ngx_get_options(int argc, char *const *argv)
                 ngx_log_stderr(0, "option \"-p\" requires directory name");
                 return NGX_ERROR;
 
-            case 'c':
+            case 'c'://加载指定配置文件
                 if (*p) {
                     ngx_conf_file = p;
                     goto next;
@@ -827,7 +829,7 @@ ngx_get_options(int argc, char *const *argv)
                 ngx_log_stderr(0, "option \"-g\" requires parameter");
                 return NGX_ERROR;
 
-            case 's':
+            case 's'://nginx 启动 停止 重启
                 if (*p) {
                     ngx_signal = (char *) p;
 

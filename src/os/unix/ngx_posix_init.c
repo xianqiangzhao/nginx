@@ -41,6 +41,7 @@ ngx_os_init(ngx_log_t *log)
 #endif
 
 #if (NGX_HAVE_OS_SPECIFIC_INIT)
+    //操作系统相关信息
     if (ngx_os_specific_init(log) != NGX_OK) {
         return NGX_ERROR;
     }
@@ -49,12 +50,13 @@ ngx_os_init(ngx_log_t *log)
     if (ngx_init_setproctitle(log) != NGX_OK) {
         return NGX_ERROR;
     }
-
+    //获得一页内存大小
     ngx_pagesize = getpagesize();
     ngx_cacheline_size = NGX_CPU_CACHE_LINE;
 
     for (n = ngx_pagesize; n >>= 1; ngx_pagesize_shift++) { /* void */ }
 
+    //取得系统当前可用的核数
 #if (NGX_HAVE_SC_NPROCESSORS_ONLN)
     if (ngx_ncpu == 0) {
         ngx_ncpu = sysconf(_SC_NPROCESSORS_ONLN);
@@ -71,9 +73,9 @@ ngx_os_init(ngx_log_t *log)
         ngx_cacheline_size = size;
     }
 #endif
-
+    //cache line size 设定
     ngx_cpuinfo();
-
+    //比进程可打开的最大文件描述值取得
     if (getrlimit(RLIMIT_NOFILE, &rlmt) == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, errno,
                       "getrlimit(RLIMIT_NOFILE) failed");
