@@ -280,7 +280,7 @@ ngx_execute_proc(ngx_cycle_t *cycle, void *data)
     exit(1);
 }
 
-
+//装载信号
 ngx_int_t
 ngx_init_signals(ngx_log_t *log)
 {
@@ -289,16 +289,17 @@ ngx_init_signals(ngx_log_t *log)
 
     for (sig = signals; sig->signo != 0; sig++) {
         ngx_memzero(&sa, sizeof(struct sigaction));
-
+		//信号处理函数有的话，安装信号处理程序
         if (sig->handler) {
             sa.sa_sigaction = sig->handler;
             sa.sa_flags = SA_SIGINFO;
 
-        } else {
+        } else {//忽略信号的处理程序
             sa.sa_handler = SIG_IGN;
         }
-
+		//信号阻塞掩码清空
         sigemptyset(&sa.sa_mask);
+		//安装信号
         if (sigaction(sig->signo, &sa, NULL) == -1) {
 #if (NGX_VALGRIND)
             ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,

@@ -437,7 +437,7 @@ ngx_log_open_default(ngx_cycle_t *cycle)
     return NGX_OK;
 }
 
-
+//error 文件设定
 ngx_int_t
 ngx_log_redirect_stderr(ngx_cycle_t *cycle)
 {

@@ -188,7 +188,8 @@ ngx_thread_read_handler(void *data, ngx_log_t *log)
 
 #endif /* NGX_THREADS */
 
-
+//指定偏移量写文件
+// pwrite 可以指定offset 来实现lseek+write 一起原子操作
 ssize_t
 ngx_write_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 {

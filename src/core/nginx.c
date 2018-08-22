@@ -340,7 +340,7 @@ main(int argc, char *const *argv)
     }
 
 #if !(NGX_WIN32)
-    //非win 32 系统下，信号初始化
+    //非win 32 系统下，信号安装
     if (ngx_init_signals(cycle->log) != NGX_OK) {
         return 1;
     }
@@ -362,7 +362,7 @@ main(int argc, char *const *argv)
     if (ngx_create_pidfile(&ccf->pid, cycle->log) != NGX_OK) {
         return 1;
     }
-
+	//erroe 文件设定
     if (ngx_log_redirect_stderr(cycle) != NGX_OK) {
         return 1;
     }
@@ -377,11 +377,11 @@ main(int argc, char *const *argv)
     ngx_use_stderr = 0;
 
     if (ngx_process == NGX_PROCESS_SINGLE) {
-        //单进程模式
+        //单进程模式 很少用
         ngx_single_process_cycle(cycle);
 
     } else {
-      //master worker 模式
+      //master process 模式
         ngx_master_process_cycle(cycle);
     }
 
@@ -450,7 +450,7 @@ ngx_show_version_info(void)
     }
 }
 
-
+//socket 设定
 static ngx_int_t
 ngx_add_inherited_sockets(ngx_cycle_t *cycle)
 {
@@ -869,7 +869,7 @@ ngx_get_options(int argc, char *const *argv)
     return NGX_OK;
 }
 
-
+//启动参数保存
 static ngx_int_t
 ngx_save_argv(ngx_cycle_t *cycle, int argc, char *const *argv)
 {
@@ -911,7 +911,7 @@ ngx_save_argv(ngx_cycle_t *cycle, int argc, char *const *argv)
     return NGX_OK;
 }
 
-
+//进程选项设定
 static ngx_int_t
 ngx_process_options(ngx_cycle_t *cycle)
 {
@@ -1495,7 +1495,7 @@ ngx_set_worker_processes(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     return NGX_CONF_OK;
 }
 
-
+//加载模块
 static char *
 ngx_load_module(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {

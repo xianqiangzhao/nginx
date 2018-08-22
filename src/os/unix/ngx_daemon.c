@@ -13,7 +13,7 @@ ngx_int_t
 ngx_daemon(ngx_log_t *log)
 {
     int  fd;
-
+	//创建一个子进程，父进程退出。
     switch (fork()) {
     case -1:
         ngx_log_error(NGX_LOG_EMERG, log, ngx_errno, "fork() failed");
@@ -22,7 +22,7 @@ ngx_daemon(ngx_log_t *log)
     case 0:
         break;
 
-    default:
+    default://父进程exit退出
         exit(0);
     }
 
