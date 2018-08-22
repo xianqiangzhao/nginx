@@ -128,6 +128,7 @@ ngx_clone_listening(ngx_conf_t *cf, ngx_listening_t *ls)
 }
 
 
+//cycle->listening 中的socket 进行设置
 ngx_int_t
 ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 {

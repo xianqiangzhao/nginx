@@ -249,7 +249,7 @@ main(int argc, char *const *argv)
     ngx_memzero(&init_cycle, sizeof(ngx_cycle_t));
     init_cycle.log = log;
     ngx_cycle = &init_cycle;
-    //pool 初期化
+    //内存管理 pool 初期化
     init_cycle.pool = ngx_create_pool(1024, log);
     if (init_cycle.pool == NULL) {
         return 1;
@@ -270,7 +270,7 @@ main(int argc, char *const *argv)
     /*
      * ngx_crc32_table_init() requires ngx_cacheline_size set in ngx_os_init()
      */
-
+	//crc 校验
     if (ngx_crc32_table_init() != NGX_OK) {
         return 1;
     }
@@ -278,17 +278,17 @@ main(int argc, char *const *argv)
     /*
      * ngx_slab_sizes_init() requires ngx_pagesize set in ngx_os_init()
      */
-
+    //slab 内存初始化
     ngx_slab_sizes_init();
-
+    //服务器监听套接字
     if (ngx_add_inherited_sockets(&init_cycle) != NGX_OK) {
         return 1;
     }
-
+	//初始化modules
     if (ngx_preinit_modules() != NGX_OK) {
         return 1;
     }
-
+   //init_cycle初始化
     cycle = ngx_init_cycle(&init_cycle);
     if (cycle == NULL) {
         if (ngx_test_config) {
@@ -298,7 +298,7 @@ main(int argc, char *const *argv)
 
         return 1;
     }
-
+	//测试解析配置文件
     if (ngx_test_config) {
         if (!ngx_quiet_mode) {
             ngx_log_stderr(0, "configuration file %s test is successful",
@@ -324,15 +324,15 @@ main(int argc, char *const *argv)
 
         return 0;
     }
-
+	//信号初始化
     if (ngx_signal) {
         return ngx_signal_process(cycle, ngx_signal);
     }
-
+    //log 文件中记入nginx 版本等信息。
     ngx_os_status(cycle->log);
 
     ngx_cycle = cycle;
-
+    //配置文件
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
     if (ccf->master && ngx_process == NGX_PROCESS_SINGLE) {
@@ -340,11 +340,11 @@ main(int argc, char *const *argv)
     }
 
 #if !(NGX_WIN32)
-
+    //非win 32 系统下，信号初始化
     if (ngx_init_signals(cycle->log) != NGX_OK) {
         return 1;
     }
-
+    //守护进程模式
     if (!ngx_inherited && ccf->daemon) {
         if (ngx_daemon(cycle->log) != NGX_OK) {
             return 1;
@@ -358,7 +358,7 @@ main(int argc, char *const *argv)
     }
 
 #endif
-
+    //pid 文件生成
     if (ngx_create_pidfile(&ccf->pid, cycle->log) != NGX_OK) {
         return 1;
     }
@@ -377,9 +377,11 @@ main(int argc, char *const *argv)
     ngx_use_stderr = 0;
 
     if (ngx_process == NGX_PROCESS_SINGLE) {
+        //单进程模式
         ngx_single_process_cycle(cycle);
 
     } else {
+      //master worker 模式
         ngx_master_process_cycle(cycle);
     }
 
@@ -455,7 +457,7 @@ ngx_add_inherited_sockets(ngx_cycle_t *cycle)
     u_char           *p, *v, *inherited;
     ngx_int_t         s;
     ngx_listening_t  *ls;
-
+    //获取环境变量 这里的"NGINX_VAR"是宏定义，值为"NGINX"
     inherited = (u_char *) getenv(NGINX_VAR);
 
     if (inherited == NULL) {
@@ -464,14 +466,14 @@ ngx_add_inherited_sockets(ngx_cycle_t *cycle)
 
     ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
                   "using inherited sockets from \"%s\"", inherited);
-
+	//初始化10 个ngx_listening_t结构数组
     if (ngx_array_init(&cycle->listening, cycle->pool, 10,
                        sizeof(ngx_listening_t))
         != NGX_OK)
     {
         return NGX_ERROR;
     }
-
+	//循环解析环境变量中保存的port
     for (p = inherited, v = p; *p; p++) {
         if (*p == ':' || *p == ';') {
             s = ngx_atoi(v, p - v);
