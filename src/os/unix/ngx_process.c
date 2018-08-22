@@ -635,7 +635,7 @@ ngx_os_signal_process(ngx_cycle_t *cycle, char *name, ngx_pid_t pid)
 
     for (sig = signals; sig->signo != 0; sig++) {
         if (ngx_strcmp(name, sig->name) == 0) {
-            if (kill(pid, sig->signo) != -1) {
+            if (kill(pid, sig->signo) != -1) { //发送指定信号给进程ID
                 return 0;
             }
 
