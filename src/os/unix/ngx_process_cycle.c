@@ -69,7 +69,7 @@ static ngx_cycle_t      ngx_exit_cycle;
 static ngx_log_t        ngx_exit_log;
 static ngx_open_file_t  ngx_exit_log_file;
 
-//master 进程启动
+//master process 进程创建
 void
 ngx_master_process_cycle(ngx_cycle_t *cycle)
 {
@@ -111,7 +111,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
     for (i = 0; i < ngx_argc; i++) {
         size += ngx_strlen(ngx_argv[i]) + 1;
     }
-
+    //设置进程title
     title = ngx_pnalloc(cycle->pool, size);
     if (title == NULL) {
         /* fatal */
@@ -126,11 +126,12 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
 
     ngx_setproctitle(title);
 
-
+    //取得配置选项
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
-
+    //worker 进程创建&&启动
     ngx_start_worker_processes(cycle, ccf->worker_processes,
                                NGX_PROCESS_RESPAWN);
+    //cache manager， cache loader进程创建&&启动
     ngx_start_cache_manager_processes(cycle, 0);
 
     ngx_new_binary = 0;
@@ -153,7 +154,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
             itv.it_interval.tv_usec = 0;
             itv.it_value.tv_sec = delay / 1000;
             itv.it_value.tv_usec = (delay % 1000 ) * 1000;
-
+            //设置定时器，以系统真实时间来计算，送出SIGALRM信号,这个信号反过来会设置ngx_sigalrm为1，这样delay就会不断翻倍。
             if (setitimer(ITIMER_REAL, &itv, NULL) == -1) {
                 ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                               "setitimer() failed");
@@ -162,25 +163,26 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
 
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "sigsuspend");
 
+        //等待接收所有信号
         sigsuspend(&set);
-
+        //時間更新
         ngx_time_update();
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "wake up, sigio %i", sigio);
 
-        if (ngx_reap) {
+        if (ngx_reap) {//父进程收到一个子进程退出的信号
             ngx_reap = 0;
             ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "reap children");
 
-            live = ngx_reap_children(cycle);
+            live = ngx_reap_children(cycle);//检查子进程
         }
-
+        // //如果没有存活的子进程，并且收到了ngx_terminate或者ngx_quit信号，则master退出。 
         if (!live && (ngx_terminate || ngx_quit)) {
             ngx_master_process_exit(cycle);
         }
 
-        if (ngx_terminate) {
+        if (ngx_terminate) {//收到了sigint信号 向所有子进程发送信号TERM．通知子进程强制退出进程
             if (delay == 0) {
                 delay = 50;
             }
@@ -192,9 +194,9 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
 
             sigio = ccf->worker_processes + 2 /* cache processes */;
 
-            if (delay > 1000) {
+            if (delay > 1000) {//如果超时，则强制杀死worker 
                 ngx_signal_worker_processes(cycle, SIGKILL);
-            } else {
+            } else {//负责发送sigint给worker，让它退出。 
                 ngx_signal_worker_processes(cycle,
                                        ngx_signal_value(NGX_TERMINATE_SIGNAL));
             }
@@ -202,10 +204,11 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
             continue;
         }
 
-        if (ngx_quit) {
+        if (ngx_quit) {//收到 quit 信号
+            //发送给worker quit信号 
             ngx_signal_worker_processes(cycle,
                                         ngx_signal_value(NGX_SHUTDOWN_SIGNAL));
-
+            //关闭监听端口
             ls = cycle->listening.elts;
             for (n = 0; n < cycle->listening.nelts; n++) {
                 if (ngx_close_socket(ls[n].fd) == -1) {
@@ -219,7 +222,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
             continue;
         }
 
-        if (ngx_reconfigure) {
+        if (ngx_reconfigure) {//重读配置文件并使服务对新配景项生效 
             ngx_reconfigure = 0;
 
             if (ngx_new_binary) {
@@ -233,7 +236,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
 
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "reconfiguring");
 
-            cycle = ngx_init_cycle(cycle);
+            cycle = ngx_init_cycle(cycle);//重新初始化config，并重新启动新的worker  
             if (cycle == NULL) {
                 cycle = (ngx_cycle_t *) ngx_cycle;
                 continue;
@@ -242,19 +245,22 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
             ngx_cycle = cycle;
             ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx,
                                                    ngx_core_module);
+            //拉起一批worker进程，这些worker进程将使用新ngx_cycle_t绪构体。
             ngx_start_worker_processes(cycle, ccf->worker_processes,
                                        NGX_PROCESS_JUST_RESPAWN);
+
             ngx_start_cache_manager_processes(cycle, 1);
 
             /* allow new processes to start */
             ngx_msleep(100);
 
             live = 1;
+             //向原先的（并非刚刚拉起的）所有子进程发送QUIT信号，要求它们优雅地退出自己的进程。
             ngx_signal_worker_processes(cycle,
                                         ngx_signal_value(NGX_SHUTDOWN_SIGNAL));
         }
 
-        if (ngx_restart) {
+        if (ngx_restart) {//检查子进程 ngx_reap_children 函数中设置该flag = 1 时，就会拉起新的子进程。
             ngx_restart = 0;
             ngx_start_worker_processes(cycle, ccf->worker_processes,
                                        NGX_PROCESS_RESPAWN);
@@ -262,21 +268,21 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
             live = 1;
         }
 
-        if (ngx_reopen) {
+        if (ngx_reopen) {//收到USR1信号   向所有子进程发送USRI信号，要求子进程都得重新打开所有log文件
             ngx_reopen = 0;
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "reopening logs");
             ngx_reopen_files(cycle, ccf->user);
             ngx_signal_worker_processes(cycle,
                                         ngx_signal_value(NGX_REOPEN_SIGNAL));
         }
-
+        //检查ngx_change_binary标志位，如果ngx_change_binary为1，则表示需要平滑升级Nginx.
         if (ngx_change_binary) {
             ngx_change_binary = 0;
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "changing binary");
             ngx_new_binary = ngx_exec_new_binary(cycle, ngx_argv);
         }
 
-        if (ngx_noaccept) {
+        if (ngx_noaccept) {//所有子进程不再接受处理新的连接，实际相当于对所有的予进程发送QUIT信号量
             ngx_noaccept = 0;
             ngx_noaccepting = 1;
             ngx_signal_worker_processes(cycle,
@@ -285,7 +291,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
     }
 }
 
-
+//单进程工作模式
 void
 ngx_single_process_cycle(ngx_cycle_t *cycle)
 {
