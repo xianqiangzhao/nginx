@@ -37,14 +37,14 @@ static ngx_conf_enum_t  ngx_debug_points[] = {
     { ngx_null_string, 0 }
 };
 
-
+//解析nginx.conf
 static ngx_command_t  ngx_core_commands[] = {
 
     { ngx_string("daemon"),
       NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_FLAG,
-      ngx_conf_set_flag_slot,
+      ngx_conf_set_flag_slot, //当出现 daemon参数时就回调该函数
       0,
-      offsetof(ngx_core_conf_t, daemon),
+      offsetof(ngx_core_conf_t, daemon),//解析到daemon 到ngx_core_conf_t.daemon中
       NULL },
 
     { ngx_string("master_process"),
@@ -77,7 +77,7 @@ static ngx_command_t  ngx_core_commands[] = {
 
     { ngx_string("worker_processes"),
       NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
-      ngx_set_worker_processes,
+      ngx_set_worker_processes,//自定义解析函数
       0,
       0,
       NULL },
